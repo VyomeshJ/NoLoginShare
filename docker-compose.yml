@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  frontend:
+    build: ./DockerFrontend
+    ports:
+      - "3000:3000"   # Only frontend exposed
+    depends_on:
+      - backend
+
+  backend:
+    build: ./Backend
+    expose:
+      - "3001"        # Only exposed to other containers
+    environment:
+      - FILE_ENCRYPTION_KEY=af15573a7f018999becbea7ac6481d71f551795e5fc31b99238e52b7ff2e8cf2
+      - PORT=3001
+    volumes:
+      - ./backend/uploads:/app/uploads
