@@ -63,14 +63,14 @@ export default function PasswordCheck() {
         />
         <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow z-10">
           {!exists && 
-            <h2 className="text-lg font-medium text-center text-red-300">
+            <h2 className="text-lg font-pixel text-center text-red-300">
               File has expired or does not exist
             </h2>
           }
           {
             exists && 
             <>
-              <h2 className="text-lg font-medium mb-4 text-center text-black font-pixel">
+              <h2 className="text-lg mb-4 text-center text-black font-pixel">
                 Enter password
               </h2>
 
@@ -85,7 +85,7 @@ export default function PasswordCheck() {
                   }
                 }}
                 placeholder="Password"
-                className={`w-full border ${ passwordIncorrect ? 'border-red-700' : 'border-black'} rounded p-3 text-center focus:outline-none focus:ring-2  ${ passwordIncorrect ? 'focus:ring-red-700' : 'focus:ring-black'} text-black`}
+                className={`w-full border ${ passwordIncorrect ? 'border-red-700' : 'border-black'} font-pixel rounded p-3 text-center focus:outline-none focus:ring-2  ${ passwordIncorrect ? 'focus:ring-red-700' : 'focus:ring-black'} text-black`}
               />
               {
                 passwordIncorrect && 

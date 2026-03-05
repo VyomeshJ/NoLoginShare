@@ -75,7 +75,38 @@ export default function Main() {
         unoptimized
         className="object-cover -z-10"
       />
-      <div className="fixed top-1/2 left-20 -translate-y-1/2  rounded-4xl w-full max-w-md min-h-[70vh] bg-white flex flex-col justify-around p-10 shadow-xl">
+      <div className="
+      w-full max-w-md bg-white flex flex-col justify-around
+      p-10 shadow-xl rounded-4xl
+      mb-6
+      mt-6
+      md:fixed md:top-6 md:right-6
+      ">
+        <h1 className="font-pixel text-black text-4xl">
+          NoLoginShare
+        </h1>
+
+        <h2 className="text-xl text-black font-pixel space-y-1 mt-4 space-y-3">
+          <p>
+            - Share small files securely under <span className="text-red-300">100mb</span> in matter of seconds!
+          </p>
+
+          <p>
+            - All files are encrypted while storing, so your data is safe.
+          </p>
+
+          <p>
+            - Once the selected time limit is over, all of your data is automatically deleted from our files.
+          </p>
+        </h2>
+      </div>
+      <div className="
+      w-full max-w-md min-h-[70vh]
+      bg-white flex flex-col justify-around p-10 shadow-xl rounded-4xl
+      mx-auto mb-6
+
+      md:fixed md:top-1/2 md:left-20 md:-translate-y-1/2 md:mx-0
+      ">
         <input
           type="file"
           ref={fileInputRef}
@@ -172,25 +203,7 @@ export default function Main() {
 
       </div>
       
-    <div className="fixed top-6 right-6 rounded-4xl w-full max-w-md bg-white flex flex-col justify-around p-10 shadow-xl">
-      <h1 className="font-pixel text-black text-4xl">
-        NoLoginShare
-      </h1>
-
-      <h2 className="text-xl text-black font-pixel space-y-1 mt-4 space-y-3">
-        <p>
-          - Share small files securely under <span className="text-red-300">100mb</span> in matter of seconds!
-        </p>
-
-        <p>
-          - All files are encrypted while storing, so your data is safe.
-        </p>
-
-        <p>
-          - Once the selected time limit is over, all of your data is automatically deleted from our files.
-        </p>
-      </h2>
-    </div>
+    
   </>
   );
 }
