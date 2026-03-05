@@ -12,8 +12,7 @@ services:
     build: ./Backend
     expose:
       - "3001"        # Only exposed to other containers
-    environment:
-      - FILE_ENCRYPTION_KEY=af15573a7f018999becbea7ac6481d71f551795e5fc31b99238e52b7ff2e8cf2
-      - PORT=3001
+    env_file:
+      - .env
     volumes:
       - ./backend/uploads:/app/uploads
