@@ -1,1 +1,10 @@
 .env
+*.env
+.DS_Store
+node_modules/
+
+backend/files.db
+backend/data/*
+!backend/data/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep

@@ -1,0 +1,73 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate backend
+        working-directory: backend
+        run: |
+          npm ci
+          node --check server.js
+          node --check db.js
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Validate Docker Compose
+        run: |
+          printf 'FILE_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" > backend/.env
+          docker compose config --quiet
+
+  deploy:
+    name: Deploy on self-hosted runner
+    runs-on: self-hosted
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Restart Docker Compose app
+        env:
+          FILE_ENCRYPTION_KEY: ${{ secrets.FILE_ENCRYPTION_KEY }}
+        run: |
+          set -euo pipefail
+
+          if ! printf '%s' "$FILE_ENCRYPTION_KEY" | grep -Eq '^[0-9a-fA-F]{64}$'; then
+            echo "FILE_ENCRYPTION_KEY must be exactly 64 hex characters."
+            exit 1
+          fi
+
+          printf 'FILE_ENCRYPTION_KEY=%s\n' "$FILE_ENCRYPTION_KEY" > backend/.env
+
+          docker compose config --quiet
+          docker compose up -d --build --remove-orphans
+          docker image prune -f
