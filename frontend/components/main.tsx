@@ -12,6 +12,7 @@ export default function Main() {
   const [loading, setLoading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [uploadError, setUploadError] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setExpires(6 * 60 * 60);
@@ -53,6 +54,7 @@ export default function Main() {
 
       const data = await res.json();
       setResultLink(`${window.location.origin}/download?id=${data.fileId}`);
+      setCopied(false);
       setUploadError(false);
       setUploaded(true);
     } catch (err) {
@@ -60,6 +62,14 @@ export default function Main() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyShareLink = async () => {
+    if (!resultLink) return;
+
+    await navigator.clipboard.writeText(resultLink);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -139,8 +149,22 @@ export default function Main() {
             <div className="min-h-28 text-sm text-black">
               <p className="mb-1 font-pixel">Share link:</p>
 
-              <div className="min-h-16 break-all rounded border bg-white p-3 text-[#1f7f41] select-all font-pixel">
-                {resultLink}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="min-h-16 flex-1 break-all rounded border bg-white p-3 text-[#1f7f41] select-all font-pixel">
+                  {resultLink}
+                </div>
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  disabled={!resultLink}
+                  className={`h-12 shrink-0 rounded px-4 font-pixel text-sm text-white transition sm:h-auto sm:min-w-24 ${
+                    resultLink
+                      ? "bg-[#1f7f41] hover:bg-[#02592e]"
+                      : "cursor-not-allowed bg-gray-400"
+                  }`}
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
               </div>
             </div>
 
