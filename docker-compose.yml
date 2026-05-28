@@ -16,8 +16,7 @@ services:
       DB_PATH: /app/data/files.db
     volumes:
       - backend-data:/app/data
-      - backend-uploads:/app/uploads
+      - /uploads:/app/uploads
 
 volumes:
   backend-data:
-  backend-uploads:
