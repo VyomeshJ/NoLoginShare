@@ -67,8 +67,6 @@ jobs:
           fi
 
           printf 'FILE_ENCRYPTION_KEY=%s\n' "$FILE_ENCRYPTION_KEY" > backend/.env
-          sudo mkdir -p /uploads
-          sudo chown "$(id -u):$(id -g)" /uploads
 
           docker compose config --quiet
           docker compose up -d --build --remove-orphans
