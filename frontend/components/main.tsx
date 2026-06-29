@@ -11,7 +11,7 @@ export default function Main() {
   const [resultLink, setResultLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
-  const [uploadError, setUploadError] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function Main() {
       return;
     }
     if (selectedFile.size > 100 * 1024 * 1024) {
-      setUploadError(true);
+      setUploadError("Upload failed. Make sure file size is below 100mb");
       setLoading(false);
       return;
     }
@@ -47,18 +47,35 @@ export default function Main() {
       });
 
       if (!res.ok) {
-        alert("Upload failed. Make sure file size is below 100mb");
-        setUploadError(true);
+        let message = "Upload failed";
+        const contentType = res.headers.get("content-type") || "";
+
+        try {
+          if (contentType.includes("application/json")) {
+            const data = await res.json();
+            message = data.error || message;
+          } else {
+            const text = await res.text();
+            message = text || message;
+          }
+        } catch {
+          message = "Upload failed";
+        }
+
+        alert(message);
+        setUploadError(message);
         return;
       }
 
       const data = await res.json();
       setResultLink(`${window.location.origin}/download?id=${data.fileId}`);
       setCopied(false);
-      setUploadError(false);
+      setUploadError("");
       setUploaded(true);
     } catch (err) {
-      alert(`Upload failed ${err}`);
+      const message = `Upload failed ${err}`;
+      alert(message);
+      setUploadError(message);
     } finally {
       setLoading(false);
     }
@@ -187,7 +204,7 @@ export default function Main() {
                   uploadError ? "text-red-400" : "text-transparent"
                 }`}
               >
-                Upload failed. Make sure file size is below 100mb
+                {uploadError || " "}
               </p>
             </div>
           </div>
