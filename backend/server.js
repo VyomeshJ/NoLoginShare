@@ -2,7 +2,6 @@ require("dotenv").config();
 const crypto = require("crypto");
 const { promisify } = require("util");
 const scryptAsync = promisify(crypto.scrypt);
-const contentDisposition = require("content-disposition");
 
 const rateLimit = require("express-rate-limit");
 
@@ -69,6 +68,10 @@ function decryptFile(encrypted, iv, authTag, key) {
     decipher.update(encrypted),
     decipher.final()
   ]);
+}
+
+function asBuffer(value, encoding = "hex") {
+  return Buffer.isBuffer(value) ? value : Buffer.from(value, encoding);
 }
 
 
@@ -183,14 +186,11 @@ app.post("/files/:id/download", downloadLimiter, (req, res) => {
             const key = await deriveKeyFromPassword(providedPassword, row.salt);
             const decrypted = decryptFile(
                 encryptedBuffer,
-                row.iv,
-                row.authTag,
+                asBuffer(row.iv),
+                asBuffer(row.auth_tag),
                 key
             );
-            res.setHeader(
-            "Content-Disposition",
-            contentDisposition(row.original_name)
-            );
+            res.attachment(row.original_name);
             res.send(decrypted);
         }
         catch(err){
