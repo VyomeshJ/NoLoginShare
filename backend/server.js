@@ -83,7 +83,7 @@ const upload = multer({
 
 
 const allowedOrigins = [
-  "https://www.nologinshare.vyomeshj.com",
+  "https://nologinshare.vyomeshj.com",
   "http://localhost:3000",
 ];
 
