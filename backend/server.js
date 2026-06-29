@@ -182,10 +182,10 @@ app.post("/files/:id/download", downloadLimiter, (req, res) => {
             const encryptedBuffer = fs.readFileSync(row.path);
             const key = await deriveKeyFromPassword(providedPassword, row.salt);
             const decrypted = decryptFile(
-            encryptedBuffer,
-            Buffer.from(row.iv, "hex"),
-            Buffer.from(row.auth_tag, "hex"),
-            key
+                encryptedBuffer,
+                row.iv,
+                row.authTag,
+                key
             );
             res.setHeader(
             "Content-Disposition",
