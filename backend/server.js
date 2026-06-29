@@ -111,6 +111,8 @@ app.get("/", (req, res) => {
 
 
 app.post("/upload", uploadLimiter, upload.single("file"), async(req, res) => {
+    let finalPath;
+
     try{
         if (!req.file) {
             return res.status(400).json({ error: "No file uploaded" });
@@ -124,7 +126,7 @@ app.post("/upload", uploadLimiter, upload.single("file"), async(req, res) => {
         const expiresAt = Date.now() + expiresIn * 1000;
 
         const ext = path.extname(req.file.originalname);
-        const finalPath = path.join("uploads", id + ext);
+        finalPath = path.join("uploads", id + ext);
         
         const fileBuffer = fs.readFileSync(req.file.path);
         const salt = generateSalt();
