@@ -81,22 +81,22 @@ const upload = multer({
 });
 
 
+app.use(cors());
+// const allowedOrigins = [
+//   "https://nologinshare.vyomeshj.com",
+//   "http://localhost:3000",
+// ];
 
-const allowedOrigins = [
-  "https://nologinshare.vyomeshj.com",
-  "http://localhost:3000",
-];
+// app.use(cors({
+//   origin(origin, callback) {
+//     if (!origin || allowedOrigins.includes(origin)) {
+//       return callback(null, true);
+//     }
 
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error("Not allowed by CORS"));
-  },
-  methods: ["GET", "POST"],
-}));
+//     return callback(new Error("Not allowed by CORS"));
+//   },
+//   methods: ["GET", "POST"],
+// }));
 
 // app.use(cors({
 //   origin: "http://localhost:3000"
