@@ -2,8 +2,25 @@ require("dotenv").config();
 const crypto = require("crypto");
 const { promisify } = require("util");
 const scryptAsync = promisify(crypto.scrypt);
+const contentDisposition = require("content-disposition");
+
+const rateLimit = require("express-rate-limit");
 
 const express = require("express")
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+});
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many uploads. Try again later." },
+});
+const downloadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { error: "Too many attempts. Try again later." },
+});
 const multer = require("multer")
 const fs = require("fs")
 const { v4: uuidv4 } = require("uuid");
@@ -13,6 +30,8 @@ const db = require("./db");
 const PORT = 3001
 
 const app = express();
+app.use(generalLimiter);
+
 
 const cors = require("cors");
 
@@ -63,7 +82,10 @@ const upload = multer({
 
 
 
-app.use(cors());
+app.use(cors({
+  origin: "https://nologinshare.vyomeshj.com",
+  methods: ["GET", "POST"],
+}));
 
 // app.use(cors({
 //   origin: "http://localhost:3000"
@@ -77,7 +99,7 @@ app.get("/", (req, res) => {
 });
 
 
-app.post("/upload", upload.single("file"), async(req, res) => {
+app.post("/upload", uploadLimiter, upload.single("file"), async(req, res) => {
     try{
         if (!req.file) {
             return res.status(400).json({ error: "No file uploaded" });
@@ -102,8 +124,16 @@ app.post("/upload", upload.single("file"), async(req, res) => {
 
 
 
-        db.run(`INSERT INTO uploads (id, path, expires_at, iv, auth_tag, original_name, salt) VALUES (?, ?, ?, ?, ?, ?, ?)`, [id, finalPath, expiresAt, iv.toString("hex"), authTag.toString("hex"), req.file.originalname, salt], (err) => {
-            if (err) console.error("DB INSERT ERROR:", err);
+        await new Promise((resolve, reject) => {
+            db.run(
+                `INSERT INTO uploads (id, path, expires_at, iv, auth_tag, original_name, salt)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [id, finalPath, expiresAt, iv, authTag, req.file.originalname, salt],
+                (err) => {
+                if (err) reject(err);
+                else resolve();
+                }
+            );
         });
 
 
@@ -113,12 +143,15 @@ app.post("/upload", upload.single("file"), async(req, res) => {
     }
     
     catch (err) {
+        if (finalPath && fs.existsSync(finalPath)) {
+            fs.unlinkSync(finalPath);
+        }
         console.error(err);
         res.status(500).json({ error: "Upload failed" });
     }
 });
 
-app.post("/files/:id/download", (req, res) => {
+app.post("/files/:id/download", downloadLimiter, (req, res) => {
     const id = req.params.id;
     const providedPassword = req.body.password || "";
 
@@ -128,10 +161,13 @@ app.post("/files/:id/download", (req, res) => {
         if (row.expires_at < Date.now()) {
             return res.status(410).send("File expired");
         }
-
-        const encryptedBuffer = fs.readFileSync(row.path);
-        const key = await deriveKeyFromPassword(providedPassword, row.salt);
+        
         try{
+            if (!fs.existsSync(row.path)) {
+                return res.status(404).send("File missing");
+            }
+            const encryptedBuffer = fs.readFileSync(row.path);
+            const key = await deriveKeyFromPassword(providedPassword, row.salt);
             const decrypted = decryptFile(
             encryptedBuffer,
             Buffer.from(row.iv, "hex"),
@@ -140,7 +176,7 @@ app.post("/files/:id/download", (req, res) => {
             );
             res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${row.original_name}"`
+            contentDisposition(row.original_name)
             );
             res.send(decrypted);
         }
