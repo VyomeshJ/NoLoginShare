@@ -12,7 +12,13 @@ export default function PasswordCheck() {
   const id = params.get("id");
   
   const checkPasswordAndDownload = async () => {
-    const res = await fetch(`/api/files/${id}/check?password=${encodeURIComponent(password)}`);
+    const res = await fetch(`/api/files/${id}/download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password }),
+    });
     if (!res.ok) {
       setPasswordIncorrect(true);
       return;
@@ -20,7 +26,17 @@ export default function PasswordCheck() {
 
     setPasswordIncorrect(false);
 
-    window.location.href = `/api/files/${id}?password=${encodeURIComponent(password)}`;
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
   };
 
   useEffect(() => {

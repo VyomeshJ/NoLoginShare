@@ -6,10 +6,10 @@ db.run(`
     id TEXT PRIMARY KEY,
     path TEXT,
     expires_at INTEGER,
-    password TEXT,
-    iv TEXT NOT NULL,
-    auth_tag TEXT NOT NULL,
-    original_name TEXT NOT NULL
+    iv BLOB NOT NULL,
+    auth_tag BLOB NOT NULL,
+    original_name TEXT NOT NULL,
+    salt BLOB NOT NULL
   )
 `);
 

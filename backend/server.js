@@ -1,6 +1,7 @@
 require("dotenv").config();
 const crypto = require("crypto");
-const ENCRYPTION_KEY = Buffer.from(process.env.FILE_ENCRYPTION_KEY, "hex");
+const { promisify } = require("util");
+const scryptAsync = promisify(crypto.scrypt);
 
 const express = require("express")
 const multer = require("multer")
@@ -16,11 +17,18 @@ const app = express();
 const cors = require("cors");
 
 
+async function deriveKeyFromPassword(password, salt) {
+  const key = await scryptAsync(password, salt, 32);
+  return key;
+}
 
+function generateSalt() {
+  return crypto.randomBytes(16); // 128-bit salt
+}
 
-function encryptFile(buffer){
+function encryptFile(buffer, key){
     const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv("aes-256-gcm", ENCRYPTION_KEY, iv);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
     const encrypted = Buffer.concat([
         cipher.update(buffer),
         cipher.final()
@@ -33,8 +41,8 @@ function encryptFile(buffer){
     };
 }
 
-function decryptFile(encrypted, iv, authTag) {
-  const decipher = crypto.createDecipheriv("aes-256-gcm", ENCRYPTION_KEY, iv);
+function decryptFile(encrypted, iv, authTag, key) {
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
 
   decipher.setAuthTag(authTag);
 
@@ -82,24 +90,19 @@ app.post("/upload", upload.single("file"), async(req, res) => {
         }
         const expiresAt = Date.now() + expiresIn * 1000;
 
-        let hashedPassword = null;
-        if (req.body.password) {
-            hashedPassword = await bcrypt.hash(req.body.password, 10);
-        }
         const ext = path.extname(req.file.originalname);
         const finalPath = path.join("uploads", id + ext);
         
-        //new encrypted thingy
         const fileBuffer = fs.readFileSync(req.file.path);
-        const { encrypted, iv, authTag } = encryptFile(fileBuffer);
+        const salt = generateSalt();
+        const key = await deriveKeyFromPassword(req.body.password, salt);
+        const { encrypted, iv, authTag } = encryptFile(fileBuffer, key);
         fs.writeFileSync(finalPath, encrypted);
         fs.unlinkSync(req.file.path);
 
 
 
-        //fs.renameSync(req.file.path, finalPath);
-
-        db.run(`INSERT INTO uploads (id, path, expires_at, password, iv, auth_tag, original_name) VALUES (?, ?, ?, ?, ?, ?, ?)`, [id, finalPath, expiresAt, hashedPassword, iv.toString("hex"), authTag.toString("hex"), req.file.originalname], (err) => {
+        db.run(`INSERT INTO uploads (id, path, expires_at, iv, auth_tag, original_name, salt) VALUES (?, ?, ?, ?, ?, ?, ?)`, [id, finalPath, expiresAt, iv.toString("hex"), authTag.toString("hex"), req.file.originalname, salt], (err) => {
             if (err) console.error("DB INSERT ERROR:", err);
         });
 
@@ -115,9 +118,9 @@ app.post("/upload", upload.single("file"), async(req, res) => {
     }
 });
 
-app.get("/files/:id/check", (req, res) => {
+app.post("/files/:id/download", (req, res) => {
     const id = req.params.id;
-    const providedPassword = req.query.password || "";
+    const providedPassword = req.body.password || "";
 
     db.get(`SELECT * FROM uploads WHERE id = ?`, [id], async (err, row) => {
         if (err) return res.status(500).send("Database error");
@@ -126,11 +129,25 @@ app.get("/files/:id/check", (req, res) => {
             return res.status(410).send("File expired");
         }
 
-        if (row.password) {
-            const match = await bcrypt.compare(providedPassword, row.password);
-            if (!match) return res.status(403).send("Incorrect password");
+        const encryptedBuffer = fs.readFileSync(row.path);
+        const key = await deriveKeyFromPassword(providedPassword, row.salt);
+        try{
+            const decrypted = decryptFile(
+            encryptedBuffer,
+            Buffer.from(row.iv, "hex"),
+            Buffer.from(row.auth_tag, "hex"),
+            key
+            );
+            res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${row.original_name}"`
+            );
+            res.send(decrypted);
         }
-        res.json({ ok: true });
+        catch(err){
+            return res.status(403).send("Incorrect password");
+        }
+
     })
 })
 
@@ -146,50 +163,6 @@ app.get("/files/:id/checkexistence", (req, res) => {
 
         res.json({ existence: "exists" });
     })
-})
-
-app.get("/files/:id", (req, res) => {
-    const id = req.params.id;
-    const providedPassword = req.query.password || "";
-
-    db.get(`SELECT * FROM uploads WHERE id = ?`, [id], async (err, row) => {
-        if (err) return res.status(500).send("Database error");
-        if (!row) return res.status(404).send("File not found");
-        if (row.expires_at < Date.now()) {
-            return res.status(410).send("File expired");
-        }
-
-        if (row.password) {
-            const match = await bcrypt.compare(providedPassword, row.password);
-            if (!match) return res.status(403).send("Incorrect password");
-        }
-        if (!fs.existsSync(row.path)) {
-            return res.status(404).send("File missing");
-        }
-        
-
-
-        const encryptedBuffer = fs.readFileSync(row.path);
-
-        // Decrypt
-        const decrypted = decryptFile(
-            encryptedBuffer,
-            Buffer.from(row.iv, "hex"),
-            Buffer.from(row.auth_tag, "hex")
-        );
-
-        // Send original filename
-        res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${row.original_name}"`
-        );
-
-        res.send(decrypted);
-
-        
-        //res.download(row.path);
-    })
-
 })
 
 
