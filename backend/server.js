@@ -82,8 +82,19 @@ const upload = multer({
 
 
 
+const allowedOrigins = [
+  "https://www.nologinshare.vyomeshj.com",
+  "http://localhost:3000",
+];
+
 app.use(cors({
-  origin: "https://nologinshare.vyomeshj.com",
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
   methods: ["GET", "POST"],
 }));
 
